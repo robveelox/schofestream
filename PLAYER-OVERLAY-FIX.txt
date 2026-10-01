@@ -1,0 +1,10 @@
+Schofestream 0.1.4 — player visibility fix
+
+The video was already playing correctly, but the full-screen loading overlay remained rendered above it.
+
+The fix adds:
+
+.player-overlay[hidden] { display: none !important; }
+
+After uploading 0.1.4, hard refresh with Cmd+Shift+R.
+DevTools should show assets with ?v=0.1.4.
