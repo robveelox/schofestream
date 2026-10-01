@@ -41,6 +41,7 @@ try {
         ],
         'recent' => array_slice($recent, 0, 10),
         'preferences' => sf_preferences(),
+        'appVersion' => (string)($config['app_version'] ?? ''),
         'session' => [
             'deviceId' => substr((string)($_SESSION['device_id'] ?? ''), 0, 8) . '…',
             'signedInAt' => $_SESSION['login_at'] ?? null,

@@ -44,7 +44,7 @@ $genreResult = $safe('Genres', '/Genres', [
 ], 60);
 
 $historyResult = [];
-if ($prefs['show_recently_watched'] || $prefs['show_recommendations']) {
+if (sf_home_row_visible($prefs, 'recentlyWatched') || sf_home_row_visible($prefs, 'becauseYouWatched') || sf_home_row_visible($prefs, 'genres')) {
     $historyResult = $safe('Recently Watched', "/Users/{$userId}/Items", [
         'IncludeItemTypes'=>'Movie,Episode','Recursive'=>'true','Limit'=>80,'SortBy'=>'DatePlayed','SortOrder'=>'Descending',
         'Fields'=>$fields,'EnableImages'=>'true','ImageTypeLimit'=>1,'EnableUserData'=>'true','EnableTotalRecordCount'=>'false',
@@ -87,7 +87,7 @@ foreach($preferredGenres as $genre){
 }
 
 $because = ['source'=>null,'items'=>[]];
-if ($prefs['show_recommendations'] && $historyItems) {
+if (sf_home_row_visible($prefs, 'becauseYouWatched') && $historyItems) {
     $source = $historyItems[0];
     $similarSourceId = ($source['type'] === 'Episode' && !empty($source['seriesId'])) ? (string)$source['seriesId'] : (string)$source['id'];
     $similar = $safe('Recommendations', '/Items/' . rawurlencode($similarSourceId) . '/Similar', [
@@ -104,7 +104,7 @@ $hero ??= ($movieItems[0]??$showItems[0]??null);
 
 json_response([
     'hero'=>$hero,'continueWatching'=>$resumeItems,'nextUp'=>$nextItems,'recentMovies'=>$movieItems,'recentShows'=>$showItems,
-    'recentlyWatched'=>$prefs['show_recently_watched']?$historyItems:[],'becauseYouWatched'=>$because,
+    'recentlyWatched'=>sf_home_row_visible($prefs, 'recentlyWatched')?$historyItems:[],'becauseYouWatched'=>$because,
     'favorites'=>$favoriteItems,'collections'=>$collectionItems,'genres'=>$genres,'genreRows'=>$genreRows,
     'preferences'=>$prefs,'partial'=>!empty($warnings),'unavailableRows'=>array_values(array_unique($warnings)),
 ]);

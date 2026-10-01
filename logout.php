@@ -1,6 +1,15 @@
 <?php
 declare(strict_types=1);
 require __DIR__ . '/includes/bootstrap.php';
+
+if (is_logged_in()) {
+    try {
+        jf_request('POST', '/Sessions/Logout');
+    } catch (Throwable) {
+        // Local sign-out must still complete if Jellyfin is temporarily unavailable.
+    }
+}
+
 $_SESSION = [];
 if (ini_get('session.use_cookies')) {
     $params = session_get_cookie_params();

@@ -3,10 +3,10 @@ declare(strict_types=1);
 
 return [
     'app_name' => 'Schofestream',
-    'app_version' => '0.3.0',
+    'app_version' => '0.3.1',
     'jellyfin_url' => 'https://player.schofestream.co.uk',
     'client_name' => 'Schofestream Web',
-    'client_version' => '0.3.0',
+    'client_version' => '0.3.1',
     'verify_ssl' => true,
     'request_timeout' => 20,
     'max_streaming_bitrate' => 12_000_000,

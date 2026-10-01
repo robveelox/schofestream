@@ -7,8 +7,6 @@ function sf_default_preferences(): array
         'preferred_quality' => 0,
         'autoplay_next' => true,
         'default_subtitles' => 'off',
-        'show_recently_watched' => true,
-        'show_recommendations' => true,
         'home_rows' => [
             'continueWatching', 'nextUp', 'becauseYouWatched', 'recentlyWatched',
             'favorites', 'recentMovies', 'recentShows', 'genres', 'collections'
@@ -25,7 +23,9 @@ function sf_settings_file(): string
         throw new RuntimeException('Schofestream settings storage is not writable.');
     }
     $userId = jf_user_id();
-    if ($userId === '') throw new RuntimeException('No authenticated user.');
+    if ($userId === '') {
+        throw new RuntimeException('No authenticated user.');
+    }
     return $base . '/' . hash('sha256', $userId) . '.json';
 }
 
@@ -34,11 +34,12 @@ function sf_preferences(): array
     $defaults = sf_default_preferences();
     try {
         $file = sf_settings_file();
-        if (!is_file($file)) return $defaults;
+        if (!is_file($file)) {
+            return $defaults;
+        }
         $raw = @file_get_contents($file);
         $saved = is_string($raw) ? json_decode($raw, true) : null;
-        if (!is_array($saved)) return $defaults;
-        return sf_sanitize_preferences(array_replace($defaults, $saved));
+        return is_array($saved) ? sf_sanitize_preferences(array_replace($defaults, $saved)) : $defaults;
     } catch (Throwable) {
         return $defaults;
     }
@@ -49,18 +50,25 @@ function sf_sanitize_preferences(array $input): array
     $defaults = sf_default_preferences();
     $allowedRows = $defaults['home_rows'];
     $qualityOptions = [0, 2_500_000, 5_000_000, 8_000_000, 12_000_000];
+
     $quality = (int)($input['preferred_quality'] ?? 0);
-    if (!in_array($quality, $qualityOptions, true)) $quality = 0;
+    if (!in_array($quality, $qualityOptions, true)) {
+        $quality = 0;
+    }
 
     $subtitle = (string)($input['default_subtitles'] ?? 'off');
-    if (!in_array($subtitle, ['off', 'default'], true)) $subtitle = 'off';
+    if (!in_array($subtitle, ['off', 'default'], true)) {
+        $subtitle = 'off';
+    }
 
     $rows = array_values(array_unique(array_filter(
         array_map('strval', (array)($input['home_rows'] ?? [])),
         static fn(string $row): bool => in_array($row, $allowedRows, true)
     )));
     foreach ($allowedRows as $row) {
-        if (!in_array($row, $rows, true)) $rows[] = $row;
+        if (!in_array($row, $rows, true)) {
+            $rows[] = $row;
+        }
     }
 
     $hidden = array_values(array_unique(array_filter(
@@ -68,15 +76,27 @@ function sf_sanitize_preferences(array $input): array
         static fn(string $row): bool => in_array($row, $allowedRows, true)
     )));
 
+    // 0.3.0 compatibility: the old standalone visibility toggles duplicated row visibility.
+    if (array_key_exists('show_recently_watched', $input) && !$input['show_recently_watched']) {
+        $hidden[] = 'recentlyWatched';
+    }
+    if (array_key_exists('show_recommendations', $input) && !$input['show_recommendations']) {
+        $hidden[] = 'becauseYouWatched';
+    }
+    $hidden = array_values(array_unique($hidden));
+
     return [
         'preferred_quality' => $quality,
         'autoplay_next' => (bool)($input['autoplay_next'] ?? true),
         'default_subtitles' => $subtitle,
-        'show_recently_watched' => (bool)($input['show_recently_watched'] ?? true),
-        'show_recommendations' => (bool)($input['show_recommendations'] ?? true),
         'home_rows' => $rows,
         'hidden_home_rows' => $hidden,
     ];
+}
+
+function sf_home_row_visible(array $preferences, string $row): bool
+{
+    return !in_array($row, (array)($preferences['hidden_home_rows'] ?? []), true);
 }
 
 function sf_save_preferences(array $input): array

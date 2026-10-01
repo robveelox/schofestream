@@ -1,64 +1,22 @@
-# Changelog
-
-## 0.3.0 — 1 October 2026
-- Added a Jellyfin-backed profile/account experience with avatar, recent viewing stats and current Schofestream session details.
-- Added Watch History with movie/episode filtering and a Recently Watched Home row.
-- Added “Because You Watched…” recommendations using Jellyfin Similar items from the latest viewed title.
-- Home genre rows now prefer genres seen most often in recent viewing history.
-- Added persistent per-user Schofestream settings stored outside the public web root.
-- Added preferred streaming quality, autoplay-next and default-subtitle preferences.
-- Added configurable Home row ordering and show/hide controls.
-- Added Continue Watching removal by clearing only Jellyfin PlaybackPositionTicks, without marking the title watched.
-- Saved quality/subtitle preferences now feed directly into Jellyfin playback negotiation.
-- Autoplay disabled now leaves the Up Next card available without starting the countdown.
-- Added profile/settings links to desktop navigation and a six-item mobile navigation bar.
-- Diagnostics now checks Schofestream preference-storage writability.
-- Bumped application, asset and Jellyfin client version identifiers to 0.3.0.
-
-## 0.2.2 — 1 October 2026
-- Hardened movie, series, episode, collection and person/detail rendering for missing artwork and metadata.
-- Details pages now tolerate optional Jellyfin endpoint failures, clamp long descriptions, and safely expand large cast lists.
-- Added selectable audio tracks, subtitles and playback quality. Changes renegotiate Jellyfin HLS at the current timestamp.
-- Added buffering state, stronger HLS retry/recovery, improved next-episode handling and iPhone/Safari fullscreen fallback.
-- Polished the home screen with skeleton loading, safer hero selection, partial-row failure handling and reordered high-value rows.
-- Split global instant search out of app.js; added request cancellation, faster debounce, keyboard navigation and stronger empty/error states.
-- My List now supports sorting and instant removal without a page reload.
-- Added mobile safe-area handling, landscape-player tweaks and larger touch targets.
-- Reduced artwork request sizes and added a small per-user metadata cache for shared-hosting performance.
-- Added consistent image placeholders, friendly retry states, focus-visible styling, a skip link and reduced-motion support.
-- Playback stop events now invalidate metadata cache so Continue Watching refreshes promptly after playback.
-- Bumped all static asset/client identifiers to 0.2.2.
-
-## 0.1.5 — 1 October 2026
-- Changed Continue Watching to use Schofestream's own unfinished-playback query.
-- Shows up to 20 recently played Movies/Episodes with a saved playback position greater than zero.
-- No longer relies on Jellyfin's Resume endpoint thresholds, so briefly started titles can still appear.
-- Keeps Continue Watching ordered by most recently played.
-
-## 0.1.4 — 1 October 2026
-- Fixed the black player overlay remaining above a successfully playing video.
-- Added an explicit `.player-overlay[hidden] { display: none !important; }` rule so loading/error overlays actually disappear when JavaScript hides them.
-- Bumped frontend cache/version identifiers to 0.1.4.
-
 # Schofestream changelog
 
-## 0.1.3 — 1 October 2026
+## 0.3.1 — Cleanup & mobile sign-out
 
-- Fixed hls.js playback being blocked by Content Security Policy.
-- Added `worker-src 'self' blob:` so the hls.js transmuxing worker can start.
-- Added `data:` to `media-src` for the in-memory WebVTT subtitle track used by the player.
-- Bumped frontend cache/version identifiers to 0.1.3.
-- Added a local SVG favicon to remove the unrelated `/favicon.ico` 404 console noise.
+- Added an explicit mobile sign-out control to the authenticated header.
+- Sign-out now best-effort reports the Jellyfin session as ended before clearing the local PHP session.
+- Removed the unused `/api/session.php` endpoint from the application tree.
+- Removed obsolete 0.1.x upgrade/fix-note files from the maintained source tree.
+- Simplified Home visibility preferences: row visibility is now controlled only by `hidden_home_rows` instead of duplicated standalone booleans.
+- Added compatibility migration for existing 0.3.0 preference files so hidden Recently Watched / Because You Watched choices are preserved.
+- Removed duplicated Home-screen visibility controls from Settings.
+- Removed stale/dead CSS selectors and legacy version-specific patch comments.
+- Account version display is now supplied by the server rather than hard-coded in JavaScript.
+- Consolidated mobile navigation styling and stale responsive rules.
+- Bumped application/client assets to 0.3.1.
 
-# Schofestream Changelog
+## 0.3.0 — Personalisation
 
-## 0.1.2
-- Corrected the Jellyfin/Caddy CORS instructions.
-- Removed the incorrect recommendation to add a second `Access-Control-Allow-Origin` response header in Caddy.
-- Jellyfin's existing CORS response is now left intact.
-- No application playback-code changes from 0.1.1 are required for this specific CORS failure.
-
-## 0.1.1
-- Fixed Jellyfin `PlaybackInfo` device profile placement.
-- Added browser-compatible H.264/AAC HLS playback profile.
-- Improved playback diagnostics and retry handling.
+- Added profile/account and watch-history experiences.
+- Added per-user Schofestream playback and Home preferences.
+- Added Recently Watched and Because You Watched personalisation.
+- Added Continue Watching management.

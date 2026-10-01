@@ -1,6 +1,7 @@
 (async () => {
   const root = document.getElementById('settingsApp');
   if (!root) return;
+
   const rowLabels = {
     continueWatching: 'Continue Watching', nextUp: 'Next Up', becauseYouWatched: 'Because You Watched',
     recentlyWatched: 'Recently Watched', favorites: 'My List', recentMovies: 'Recently Added Movies',
@@ -24,32 +25,29 @@
           <label class="setting-toggle"><span><strong>Autoplay next episode</strong><small>Start the next episode after the countdown.</small></span><input name="autoplay_next" type="checkbox"><span class="toggle-ui"></span></label>
           <label class="setting-field"><span><strong>Subtitles on start</strong><small>Choose whether Schofestream asks Jellyfin for its default subtitle track.</small></span><select name="default_subtitles"><option value="off">Off</option><option value="default">Jellyfin default</option></select></label>
         </section>
-        <section class="settings-card"><h2>Home screen</h2>
-          <label class="setting-toggle"><span><strong>Recently Watched</strong><small>Show your recent viewing history on Home.</small></span><input name="show_recently_watched" type="checkbox"><span class="toggle-ui"></span></label>
-          <label class="setting-toggle"><span><strong>Recommendations</strong><small>Show “Because You Watched” when Jellyfin has similar titles.</small></span><input name="show_recommendations" type="checkbox"><span class="toggle-ui"></span></label>
-          <div class="setting-block"><strong>Row order</strong><small>Use the arrows to arrange your Home screen.</small><ol id="homeRowOrder" class="home-row-order">${prefs.home_rows.map(rowItem).join('')}</ol></div>
-        </section>
+        <section class="settings-card"><h2>Home screen</h2><div class="setting-block setting-block-first"><strong>Rows</strong><small>Show, hide and arrange your Home screen.</small><ol id="homeRowOrder" class="home-row-order">${prefs.home_rows.map(rowItem).join('')}</ol></div></section>
         <div class="settings-actions"><button class="btn btn-primary" type="submit">Save settings</button><button class="btn btn-secondary" id="resetSettings" type="button">Reset defaults</button><span id="settingsStatus" class="muted" role="status"></span></div>
       </form>`;
     const form = document.getElementById('settingsForm');
     form.preferred_quality.value = String(prefs.preferred_quality || 0);
     form.autoplay_next.checked = !!prefs.autoplay_next;
     form.default_subtitles.value = prefs.default_subtitles || 'off';
-    form.show_recently_watched.checked = !!prefs.show_recently_watched;
-    form.show_recommendations.checked = !!prefs.show_recommendations;
   };
 
-  const save = async (form) => {
-    const rows = [...document.querySelectorAll('[data-row]')].map(el => el.dataset.row);
+  const save = async form => {
     const payload = {
-      preferred_quality: Number(form.preferred_quality.value), autoplay_next: form.autoplay_next.checked,
-      default_subtitles: form.default_subtitles.value, show_recently_watched: form.show_recently_watched.checked,
-      show_recommendations: form.show_recommendations.checked, home_rows: rows,
-      hidden_home_rows: [...document.querySelectorAll('[data-row-visible]:not(:checked)')].map(el => el.dataset.rowVisible), csrf: Schofestream.csrf
+      preferred_quality: Number(form.preferred_quality.value),
+      autoplay_next: form.autoplay_next.checked,
+      default_subtitles: form.default_subtitles.value,
+      home_rows: [...document.querySelectorAll('[data-row]')].map(el => el.dataset.row),
+      hidden_home_rows: [...document.querySelectorAll('[data-row-visible]:not(:checked)')].map(el => el.dataset.rowVisible),
+      csrf: Schofestream.csrf
     };
     const status = document.getElementById('settingsStatus');
     status.textContent = 'Saving…';
-    const data = await Schofestream.api('/api/settings.php', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+    const data = await Schofestream.api('/api/settings.php', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+    });
     prefs = data.preferences;
     status.textContent = 'Saved';
     Schofestream.toast('Preferences saved');
@@ -59,23 +57,38 @@
     const data = await Schofestream.api('/api/settings.php');
     prefs = data.preferences;
     render();
-  } catch (err) { Schofestream.showError(root, err.message); return; }
+  } catch (err) {
+    Schofestream.showError(root, err.message);
+    return;
+  }
 
   root.addEventListener('click', async event => {
     const move = event.target.closest('[data-move]');
     if (move) {
-      const li = move.closest('[data-row]');
-      if (move.dataset.move === 'up' && li.previousElementSibling) li.parentNode.insertBefore(li, li.previousElementSibling);
-      if (move.dataset.move === 'down' && li.nextElementSibling) li.parentNode.insertBefore(li.nextElementSibling, li);
+      const item = move.closest('[data-row]');
+      if (move.dataset.move === 'up' && item.previousElementSibling) item.parentNode.insertBefore(item, item.previousElementSibling);
+      if (move.dataset.move === 'down' && item.nextElementSibling) item.parentNode.insertBefore(item.nextElementSibling, item);
       return;
     }
+
     if (event.target.closest('#resetSettings')) {
       try {
         const current = await Schofestream.api('/api/settings.php');
-        const data = await Schofestream.api('/api/settings.php', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...current.defaults,csrf:Schofestream.csrf})});
-        prefs = data.preferences; render(); Schofestream.toast('Preferences reset');
-      } catch (err) { Schofestream.toast(err.message); }
+        const data = await Schofestream.api('/api/settings.php', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...current.defaults, csrf: Schofestream.csrf })
+        });
+        prefs = data.preferences;
+        render();
+        Schofestream.toast('Preferences reset');
+      } catch (err) {
+        Schofestream.toast(err.message);
+      }
     }
   });
-  root.addEventListener('submit', event => { if (event.target.id === 'settingsForm') { event.preventDefault(); save(event.target).catch(err => Schofestream.toast(err.message)); } });
+
+  root.addEventListener('submit', event => {
+    if (event.target.id !== 'settingsForm') return;
+    event.preventDefault();
+    save(event.target).catch(err => Schofestream.toast(err.message));
+  });
 })();

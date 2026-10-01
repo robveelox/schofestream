@@ -36,6 +36,7 @@ function render_header(string $title = 'Schofestream', bool $showNav = true, str
         <a class="account-profile-link" href="/account.php" aria-label="Open profile"><span class="avatar-dot"><?= e(strtoupper(substr($username ?: 'S', 0, 1))) ?></span><span class="account-name"><?= e($username) ?></span></a>
         <a class="settings-link" href="/settings.php" aria-label="Settings">⚙</a>
         <a class="logout-link" href="/logout.php">Sign out</a>
+        <a class="mobile-logout-link" href="/logout.php" aria-label="Sign out" title="Sign out">↪</a>
     </div>
 </header>
 
