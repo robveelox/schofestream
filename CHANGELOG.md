@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.0 — 1 October 2026
+- Added a Jellyfin-backed profile/account experience with avatar, recent viewing stats and current Schofestream session details.
+- Added Watch History with movie/episode filtering and a Recently Watched Home row.
+- Added “Because You Watched…” recommendations using Jellyfin Similar items from the latest viewed title.
+- Home genre rows now prefer genres seen most often in recent viewing history.
+- Added persistent per-user Schofestream settings stored outside the public web root.
+- Added preferred streaming quality, autoplay-next and default-subtitle preferences.
+- Added configurable Home row ordering and show/hide controls.
+- Added Continue Watching removal by clearing only Jellyfin PlaybackPositionTicks, without marking the title watched.
+- Saved quality/subtitle preferences now feed directly into Jellyfin playback negotiation.
+- Autoplay disabled now leaves the Up Next card available without starting the countdown.
+- Added profile/settings links to desktop navigation and a six-item mobile navigation bar.
+- Diagnostics now checks Schofestream preference-storage writability.
+- Bumped application, asset and Jellyfin client version identifiers to 0.3.0.
+
 ## 0.2.2 — 1 October 2026
 - Hardened movie, series, episode, collection and person/detail rendering for missing artwork and metadata.
 - Details pages now tolerate optional Jellyfin endpoint failures, clamp long descriptions, and safely expand large cast lists.

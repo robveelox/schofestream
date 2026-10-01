@@ -8,10 +8,13 @@ if ($id === '') json_response(['error' => 'Missing item id'], 422);
 
 $userId = jf_user_id();
 $serverMax = (int)$config['max_streaming_bitrate'];
+$prefs = sf_preferences();
 $requestedBitrate = max(0, (int)($_GET['bitrate'] ?? 0));
+if ($requestedBitrate <= 0) $requestedBitrate = max(0, (int)($prefs['preferred_quality'] ?? 0));
 $maxBitrate = $requestedBitrate > 0 ? min($serverMax, max(1_000_000, $requestedBitrate)) : $serverMax;
 $audioIndex = isset($_GET['audio']) && $_GET['audio'] !== '' ? max(0, (int)$_GET['audio']) : null;
 $subtitleIndex = isset($_GET['subtitle']) && $_GET['subtitle'] !== '' ? (int)$_GET['subtitle'] : null;
+if ($subtitleIndex === null && ($prefs['default_subtitles'] ?? 'off') === 'off') $subtitleIndex = -1;
 if ($subtitleIndex !== null && $subtitleIndex < -1) $subtitleIndex = -1;
 $positionOverride = max(0.0, (float)($_GET['position'] ?? 0));
 
@@ -80,18 +83,30 @@ try {
         $playbackRequest['AlwaysBurnInSubtitleWhenTranscoding'] = $subtitleIndex >= 0;
     }
 
-    $info = jf_request('POST', "/Items/{$id}/PlaybackInfo", ['UserId' => $userId], $playbackRequest);
-    $sources = (array)($info['MediaSources'] ?? []);
-    if (!$sources) throw new RuntimeException('Jellyfin returned no playable media sources.');
+    $selectSource = static function(array $playbackInfo): array {
+        $sources = (array)($playbackInfo['MediaSources'] ?? []);
+        if (!$sources) throw new RuntimeException('Jellyfin returned no playable media sources.');
+        foreach ($sources as $candidate) {
+            if (is_array($candidate) && !empty($candidate['TranscodingUrl'])) return $candidate;
+        }
+        return is_array($sources[0] ?? null) ? $sources[0] : [];
+    };
 
-    $source = [];
-    foreach ($sources as $candidate) {
-        if (is_array($candidate) && !empty($candidate['TranscodingUrl'])) {
-            $source = $candidate;
-            break;
+    $info = jf_request('POST', "/Items/{$id}/PlaybackInfo", ['UserId' => $userId], $playbackRequest);
+    $source = $selectSource($info);
+
+    // If the profile preference is "Jellyfin default", discover the server-selected subtitle
+    // track first, then renegotiate once with that track burned into HLS for reliable browsers.
+    if ($subtitleIndex === null && ($prefs['default_subtitles'] ?? 'off') === 'default') {
+        $defaultSubtitle = $source['DefaultSubtitleStreamIndex'] ?? null;
+        if ($defaultSubtitle !== null && (int)$defaultSubtitle >= 0) {
+            $subtitleIndex = (int)$defaultSubtitle;
+            $playbackRequest['SubtitleStreamIndex'] = $subtitleIndex;
+            $playbackRequest['AlwaysBurnInSubtitleWhenTranscoding'] = true;
+            $info = jf_request('POST', "/Items/{$id}/PlaybackInfo", ['UserId' => $userId], $playbackRequest);
+            $source = $selectSource($info);
         }
     }
-    if (!$source) $source = is_array($sources[0] ?? null) ? $sources[0] : [];
 
     $mediaSourceId = (string)($source['Id'] ?? '');
     $playSessionId = (string)($info['PlaySessionId'] ?? '');
@@ -132,7 +147,7 @@ try {
     }
 
     $selectedAudio = $audioIndex ?? ($source['DefaultAudioStreamIndex'] ?? null);
-    $selectedSubtitle = $subtitleIndex ?? -1;
+    $selectedSubtitle = $subtitleIndex ?? ($source['DefaultSubtitleStreamIndex'] ?? -1);
 
     json_response([
         'item' => $item,
@@ -147,6 +162,7 @@ try {
         'selectedAudio' => $selectedAudio !== null ? (int)$selectedAudio : null,
         'selectedSubtitle' => $selectedSubtitle !== null ? (int)$selectedSubtitle : -1,
         'selectedBitrate' => $maxBitrate,
+        'preferences' => ['autoplayNext' => (bool)($prefs['autoplay_next'] ?? true), 'defaultSubtitles' => (string)($prefs['default_subtitles'] ?? 'off')],
         'qualityOptions' => [
             ['bitrate' => $serverMax, 'label' => 'Auto / Best'],
             ['bitrate' => min($serverMax, 8_000_000), 'label' => 'High'],

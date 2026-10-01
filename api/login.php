@@ -30,6 +30,7 @@ try {
     $_SESSION['jf_user_id'] = (string)$auth['User']['Id'];
     $_SESSION['jf_username'] = (string)($auth['User']['Name'] ?? $username);
     $_SESSION['csrf_token'] = bin2hex(random_bytes(24));
+    $_SESSION['login_at'] = gmdate('c');
 
     json_response(['ok' => true, 'user' => ['name' => $_SESSION['jf_username']]]);
 } catch (Throwable $e) {

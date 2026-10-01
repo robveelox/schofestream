@@ -48,7 +48,7 @@
   let playbackController = null;
   let switching = false;
 
-  const preferences = { audio: null, subtitle: -1, bitrate: 0 };
+  const preferences = { audio: null, subtitle: null, bitrate: 0 };
 
   const eventPayload = event => ({
     event,
@@ -353,15 +353,18 @@
     } catch (_) {}
   });
 
-  const startNextCountdown = () => {
+  const startNextCountdown = (autoplay = true) => {
     if (!nextEpisode || !nextBox) return;
     countdownValue = 10;
     nextBox.hidden = false;
+    const countdownWrap = nextCountdown?.closest('.next-countdown');
+    if (countdownWrap) countdownWrap.hidden = !autoplay;
     if (nextTitle) nextTitle.textContent = nextEpisode.name || 'Next episode';
     const ep = Schofestream.episodeLabel(nextEpisode);
     if (nextMeta) nextMeta.textContent = [nextEpisode.seriesName, ep].filter(Boolean).join(' · ');
     if (nextCountdown) nextCountdown.textContent = String(countdownValue);
     clearInterval(countdownTimer);
+    if (!autoplay) { showChrome(true); return; }
     countdownTimer = setInterval(() => {
       countdownValue -= 1;
       if (nextCountdown) nextCountdown.textContent = String(Math.max(0, countdownValue));
@@ -418,7 +421,7 @@
     syncControls();
     await report('stop');
     if (nextPromise) await nextPromise;
-    if (nextEpisode) startNextCountdown();
+    if (nextEpisode) startNextCountdown(info?.preferences?.autoplayNext !== false);
     else showChrome(true);
   });
 

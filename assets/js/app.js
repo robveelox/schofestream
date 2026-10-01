@@ -152,6 +152,14 @@
         body: JSON.stringify({ id, played, csrf: App.csrf }),
       });
     },
+
+    async removeResume(id) {
+      return App.api('/api/remove-resume.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, csrf: App.csrf }),
+      });
+    },
   };
 
   window.Schofestream = App;

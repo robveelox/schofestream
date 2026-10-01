@@ -33,8 +33,8 @@ function render_header(string $title = 'Schofestream', bool $showNav = true, str
     </nav>
     <button class="nav-search-button" id="openSearch" type="button" aria-label="Search Schofestream">⌕ <span>Search</span></button>
     <div class="account-menu">
-        <span class="avatar-dot"><?= e(strtoupper(substr($username ?: 'S', 0, 1))) ?></span>
-        <span class="account-name"><?= e($username) ?></span>
+        <a class="account-profile-link" href="/account.php" aria-label="Open profile"><span class="avatar-dot"><?= e(strtoupper(substr($username ?: 'S', 0, 1))) ?></span><span class="account-name"><?= e($username) ?></span></a>
+        <a class="settings-link" href="/settings.php" aria-label="Settings">⚙</a>
         <a class="logout-link" href="/logout.php">Sign out</a>
     </div>
 </header>
@@ -53,12 +53,13 @@ function render_header(string $title = 'Schofestream', bool $showNav = true, str
     </section>
 </div>
 
-<nav class="mobile-nav" aria-label="Mobile navigation">
+<nav class="mobile-nav mobile-nav-six" aria-label="Mobile navigation">
     <a href="/"><span>⌂</span><small>Home</small></a>
     <a href="/library.php?type=Movie"><span>▣</span><small>Movies</small></a>
-    <button id="mobileSearch" type="button"><span>⌕</span><small>Search</small></button>
     <a href="/library.php?type=Series"><span>▤</span><small>TV</small></a>
+    <button id="mobileSearch" type="button"><span>⌕</span><small>Search</small></button>
     <a href="/my-list.php"><span>＋</span><small>My List</small></a>
+    <a href="/account.php"><span>●</span><small>Profile</small></a>
 </nav>
 <?php endif; ?>
 <main id="mainContent">

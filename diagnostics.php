@@ -10,6 +10,7 @@ $checks = [
     'JSON extension' => extension_loaded('json'),
     'Session support' => function_exists('session_start'),
 ];
+try { $settingsFile = sf_settings_file(); $checks['Preferences storage'] = is_dir(dirname($settingsFile)) && is_writable(dirname($settingsFile)); } catch (Throwable) { $checks['Preferences storage'] = false; }
 $server = null;
 $error = null;
 try {
@@ -19,7 +20,7 @@ try {
 }
 ?>
 <section class="page-shell narrow">
-    <div class="page-heading"><div><div class="eyebrow">SCHOFESTREAM 0.1</div><h1>Diagnostics</h1></div></div>
+    <div class="page-heading"><div><div class="eyebrow">SCHOFESTREAM 0.3.0</div><h1>Diagnostics</h1></div></div>
     <div class="diagnostic-card">
         <?php foreach ($checks as $label => $ok): ?><div class="diag-row"><span><?= e($label) ?></span><strong class="<?= $ok ? 'ok' : 'bad' ?>"><?= $ok ? 'OK' : 'FAIL' ?></strong></div><?php endforeach; ?>
         <div class="diag-row"><span>Jellyfin connection</span><strong class="<?= $server ? 'ok' : 'bad' ?>"><?= $server ? 'OK' : 'FAIL' ?></strong></div>

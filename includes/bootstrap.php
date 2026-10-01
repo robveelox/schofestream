@@ -32,6 +32,7 @@ header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
 header("Content-Security-Policy: default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; img-src 'self' data: blob:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' https://cdn.jsdelivr.net; worker-src 'self' blob:; connect-src 'self' {$jfOrigin}; media-src 'self' {$jfOrigin} blob: data:");
 
 require_once __DIR__ . '/jellyfin.php';
+require_once __DIR__ . '/preferences.php';
 
 function e(?string $value): string
 {
