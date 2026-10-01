@@ -1,3 +1,11 @@
+## 0.3.2 — UI icon cleanup
+
+- Replaced decorative emoji/glyph controls with a consistent inline SVG icon system.
+- Removed emoji-style play, volume, settings, logout, navigation, watched and reorder symbols.
+- Replaced star-rating decoration with a plain `Rating` label.
+- Simplified My List / watched button copy and removed arrow decorations from CTAs where unnecessary.
+- Preserved accessible labels for icon-only controls.
+
 # Schofestream changelog
 
 ## 0.3.1 — Cleanup & mobile sign-out

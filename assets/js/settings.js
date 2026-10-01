@@ -10,9 +10,9 @@
   let prefs;
 
   const rowItem = id => `<li class="home-row-setting" data-row="${Schofestream.esc(id)}">
-    <span class="row-grip" aria-hidden="true">☰</span><strong>${Schofestream.esc(rowLabels[id] || id)}</strong>
+    <span class="row-grip" aria-hidden="true">${Schofestream.icon('grip')}</span><strong>${Schofestream.esc(rowLabels[id] || id)}</strong>
     <label class="row-visible"><input type="checkbox" data-row-visible="${Schofestream.esc(id)}" ${prefs.hidden_home_rows?.includes(id) ? '' : 'checked'}><span>Show</span></label>
-    <span class="row-order-controls"><button type="button" data-move="up" aria-label="Move ${Schofestream.esc(rowLabels[id] || id)} up">↑</button><button type="button" data-move="down" aria-label="Move ${Schofestream.esc(rowLabels[id] || id)} down">↓</button></span>
+    <span class="row-order-controls"><button type="button" data-move="up" aria-label="Move ${Schofestream.esc(rowLabels[id] || id)} up">${Schofestream.icon('chevron-up')}</button><button type="button" data-move="down" aria-label="Move ${Schofestream.esc(rowLabels[id] || id)} down">${Schofestream.icon('chevron-down')}</button></span>
   </li>`;
 
   const render = () => {

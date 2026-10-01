@@ -7,8 +7,8 @@
     const label = ep.indexNumber != null ? `Episode ${ep.indexNumber}` : 'Episode';
     const resume = ep.positionSeconds ? 'Resume' : (ep.played ? 'Watch again' : 'Play');
     return `<a class="episode-card" href="/watch.php?id=${encodeURIComponent(ep.id)}" aria-label="${App.esc(`${label}: ${ep.name}`)}">
-      <div class="episode-art">${App.art(ep.thumb || ep.backdrop || ep.poster)}<span class="episode-play" aria-hidden="true">▶</span>${App.progress(ep)}${ep.played ? '<span class="watched-badge">✓ Watched</span>' : ''}</div>
-      <div class="episode-copy"><div class="episode-top"><strong>${App.esc(label)} · ${App.esc(ep.name)}</strong><span>${ep.runtimeSeconds ? App.duration(ep.runtimeSeconds) : ''}</span></div><p>${App.esc(ep.overview || 'Description unavailable.')}</p><span class="episode-cta">${resume} <span aria-hidden="true">→</span></span></div>
+      <div class="episode-art">${App.art(ep.thumb || ep.backdrop || ep.poster)}<span class="episode-play" aria-hidden="true">${App.icon('play')}</span>${App.progress(ep)}${ep.played ? `<span class="watched-badge">${App.icon('check')} Watched</span>` : ''}</div>
+      <div class="episode-copy"><div class="episode-top"><strong>${App.esc(label)} · ${App.esc(ep.name)}</strong><span>${ep.runtimeSeconds ? App.duration(ep.runtimeSeconds) : ''}</span></div><p>${App.esc(ep.overview || 'Description unavailable.')}</p><span class="episode-cta">${resume}</span></div>
     </a>`;
   }).join('');
 
@@ -22,7 +22,7 @@
       item.year,
       item.officialRating,
       item.runtimeSeconds ? App.duration(item.runtimeSeconds) : '',
-      item.communityRating ? `★ ${Number(item.communityRating).toFixed(1)}` : '',
+      item.communityRating ? `Rating ${Number(item.communityRating).toFixed(1)}` : '',
     ].filter(Boolean);
     const actors = (item.people || []).filter(p => p.type === 'Actor');
     const directors = (item.people || []).filter(p => p.type === 'Director').map(p => p.name).filter(Boolean);
@@ -31,9 +31,9 @@
 
     let primaryAction = '';
     if (['Movie', 'Episode'].includes(item.type)) {
-      primaryAction = `<a class="btn btn-primary" href="/watch.php?id=${encodeURIComponent(item.id)}">▶ ${item.positionSeconds ? 'Resume' : (item.played ? 'Watch again' : 'Play')}</a>`;
+      primaryAction = `<a class="btn btn-primary" href="/watch.php?id=${encodeURIComponent(item.id)}">${App.icon('play')} ${item.positionSeconds ? 'Resume' : (item.played ? 'Watch again' : 'Play')}</a>`;
     } else if (item.type === 'Series' && data.seriesPlay?.id) {
-      primaryAction = `<a class="btn btn-primary" href="/watch.php?id=${encodeURIComponent(data.seriesPlay.id)}">▶ ${data.seriesPlay.positionSeconds ? 'Resume series' : 'Start watching'}</a>`;
+      primaryAction = `<a class="btn btn-primary" href="/watch.php?id=${encodeURIComponent(data.seriesPlay.id)}">${App.icon('play')} ${data.seriesPlay.positionSeconds ? 'Resume series' : 'Start watching'}</a>`;
     }
 
     const genreLinks = (item.genres || []).slice(0, 8).map(g => `<a href="/genre.php?name=${encodeURIComponent(g)}">${App.esc(g)}</a>`).join('');
@@ -43,7 +43,7 @@
 
     const castVisible = actors.slice(0, 18);
     const castExtra = actors.slice(18);
-    const castCard = (p, extra = false) => `<button class="cast-card cast-person-button${extra ? ' cast-extra' : ''}" type="button" data-person-name="${App.esc(p.name)}" aria-label="Open ${App.esc(p.name)} profile"${extra ? ' hidden' : ''}><div class="cast-photo">${p.image ? App.art(p.image) : '<span class="cast-placeholder" aria-hidden="true">●</span>'}</div><strong>${App.esc(p.name)}</strong><small>${App.esc(p.role || 'Cast')}</small></button>`;
+    const castCard = (p, extra = false) => `<button class="cast-card cast-person-button${extra ? ' cast-extra' : ''}" type="button" data-person-name="${App.esc(p.name)}" aria-label="Open ${App.esc(p.name)} profile"${extra ? ' hidden' : ''}><div class="cast-photo">${p.image ? App.art(p.image) : `<span class="cast-placeholder" aria-hidden="true">${App.esc((p.name || '?').charAt(0).toUpperCase())}</span>`}</div><strong>${App.esc(p.name)}</strong><small>${App.esc(p.role || 'Cast')}</small></button>`;
     const castHtml = actors.length ? `<section class="detail-section cast-section"><div class="row-heading"><h2>Cast</h2>${castExtra.length ? '<button class="row-more button-link" id="toggleCast" type="button" aria-expanded="false">Show all</button>' : ''}</div><div class="cast-rail">${castVisible.map(p => castCard(p)).join('')}${castExtra.map(p => castCard(p, true)).join('')}</div></section>` : '';
 
     const seriesFact = item.type === 'Episode' && item.seriesId && item.seriesName
@@ -57,7 +57,7 @@
       ${tagline ? `<div class="detail-tagline">${App.esc(tagline)}</div>` : ''}
       ${meta.length ? `<div class="hero-meta">${meta.map(App.esc).join('<span>•</span>')}</div>` : ''}
       <div class="detail-overview-wrap"><p class="detail-overview${overviewLong ? ' is-clamped' : ''}" id="detailOverview">${App.esc(overview)}</p>${overviewLong ? '<button class="overview-toggle button-link" id="overviewToggle" type="button" aria-expanded="false">Read more</button>' : ''}</div>
-      <div class="detail-actions">${primaryAction}<button class="btn btn-glass favorite-button" id="favoriteButton" type="button">${item.favorite ? '✓ In My List' : '+ My List'}</button>${['Movie','Episode'].includes(item.type) ? `<button class="btn btn-glass" id="watchedButton" type="button">${item.played ? '✓ Watched' : 'Mark watched'}</button>` : ''}</div>
+      <div class="detail-actions">${primaryAction}<button class="btn btn-glass favorite-button" id="favoriteButton" type="button">${item.favorite ? 'In My List' : 'Add to My List'}</button>${['Movie','Episode'].includes(item.type) ? `<button class="btn btn-glass" id="watchedButton" type="button">${item.played ? 'Watched' : 'Mark watched'}</button>` : ''}</div>
       <div class="detail-facts">${seriesFact}${genreLinks ? `<div><span>Genres</span><div class="detail-links">${genreLinks}</div></div>` : ''}${directors.length ? `<div><span>Director${directors.length > 1 ? 's' : ''}</span>${App.esc(directors.join(', '))}</div>` : ''}${item.studios?.length ? `<div><span>Studio</span>${App.esc(item.studios.slice(0,3).join(', '))}</div>` : ''}</div>
       </div></section>
       ${seasonBlock}
@@ -99,7 +99,7 @@
       try {
         await App.setFavorite(item.id, next);
         favorite = next;
-        favoriteButton.textContent = favorite ? '✓ In My List' : '+ My List';
+        favoriteButton.textContent = favorite ? 'In My List' : 'Add to My List';
         App.toast(favorite ? 'Added to My List' : 'Removed from My List');
       } catch (err) {
         App.toast(err.message);
@@ -114,7 +114,7 @@
       try {
         await App.setWatched(item.id, next);
         watched = next;
-        watchedButton.textContent = watched ? '✓ Watched' : 'Mark watched';
+        watchedButton.textContent = watched ? 'Watched' : 'Mark watched';
         App.toast(watched ? 'Marked as watched' : 'Marked as unwatched');
       } catch (err) {
         App.toast(err.message);

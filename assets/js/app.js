@@ -83,6 +83,24 @@
       return `/details.php?id=${encodeURIComponent(item.id)}`;
     },
 
+    icon(name) {
+      const icons = {
+        play: '<path d="M8 5.5 18 12 8 18.5z" fill="currentColor" stroke="none"></path>',
+        pause: '<path d="M8.5 6v12M15.5 6v12"></path>',
+        check: '<path d="m5 12.5 4.2 4.2L19 7"></path>',
+        close: '<path d="M6 6l12 12M18 6 6 18"></path>',
+        info: '<circle cx="12" cy="12" r="9"></circle><path d="M12 10.5V17M12 7.5h.01"></path>',
+        'chevron-right': '<path d="m9 5 7 7-7 7"></path>',
+        'chevron-up': '<path d="m5 15 7-7 7 7"></path>',
+        'chevron-down': '<path d="m5 9 7 7 7-7"></path>',
+        grip: '<circle cx="8" cy="7" r="1" fill="currentColor" stroke="none"></circle><circle cx="16" cy="7" r="1" fill="currentColor" stroke="none"></circle><circle cx="8" cy="12" r="1" fill="currentColor" stroke="none"></circle><circle cx="16" cy="12" r="1" fill="currentColor" stroke="none"></circle><circle cx="8" cy="17" r="1" fill="currentColor" stroke="none"></circle><circle cx="16" cy="17" r="1" fill="currentColor" stroke="none"></circle>',
+        volume: '<path d="M4 10v4h4l5 4V6L8 10H4z"></path><path d="M16 9.5a4 4 0 0 1 0 5M18.5 7a7.5 7.5 0 0 1 0 10"></path>',
+        muted: '<path d="M4 10v4h4l5 4V6L8 10H4z"></path><path d="m17 10 4 4M21 10l-4 4"></path>',
+      };
+      const body = icons[name] || '';
+      return `<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
+    },
+
     art(image, alt = '') {
       return image
         ? `<img class="poster-img" src="${App.esc(image)}" alt="${App.esc(alt)}" loading="lazy" decoding="async">`
@@ -101,7 +119,7 @@
         : [item.year, item.type === 'Series' ? 'Series' : (item.type === 'BoxSet' ? 'Collection' : (item.runtimeSeconds ? App.duration(item.runtimeSeconds) : ''))].filter(Boolean).join(' · ');
       const image = wide ? (item.type === 'Episode' ? (item.thumb || item.backdrop || item.poster) : (item.backdrop || item.poster)) : item.poster;
       return `<a class="media-card ${wide ? 'wide-card' : ''}" href="${href}" aria-label="${App.esc(title)}${sub ? `, ${App.esc(sub)}` : ''}">
-        <div class="media-art">${App.art(image)}<div class="card-play" aria-hidden="true">▶</div>${item.played ? '<span class="watched-badge">✓</span>' : ''}${App.progress(item)}</div>
+        <div class="media-art">${App.art(image)}<div class="card-play" aria-hidden="true">${App.icon('play')}</div>${item.played ? `<span class="watched-badge icon-only">${App.icon('check')}</span>` : ''}${App.progress(item)}</div>
         <div class="media-name">${App.esc(title)}</div>
         <div class="media-meta">${App.esc(sub)}</div>
       </a>`;
@@ -110,7 +128,7 @@
     row(title, items, href = '', options = {}) {
       const cleanItems = Array.isArray(items) ? items.filter(Boolean) : [];
       if (!cleanItems.length) return '';
-      const more = href ? `<a class="row-more" href="${href}">View all <span aria-hidden="true">→</span></a>` : '';
+      const more = href ? `<a class="row-more" href="${href}">View all ${App.icon('chevron-right')}</a>` : '';
       return `<section class="media-row"><div class="row-heading"><h2>${App.esc(title)}</h2>${more}</div><div class="card-rail ${options.wide ? 'wide-rail' : ''}">${cleanItems.map(i => App.card(i, options)).join('')}</div></section>`;
     },
 

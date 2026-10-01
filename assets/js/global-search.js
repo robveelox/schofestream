@@ -83,7 +83,7 @@
         const mediaHtml = groups.map(([label, items]) => `<div class="instant-group"><div class="instant-label">${App.esc(label)}</div>${items.slice(0, 5).map(resultTile).join('')}</div>`).join('');
         const peopleHtml = people.length ? `<div class="instant-group"><div class="instant-label">People</div>${people.map(personTile).join('')}</div>` : '';
         results.innerHTML = mediaHtml || peopleHtml
-          ? `${mediaHtml}${peopleHtml}<a class="view-search-results" href="/search.php?q=${encodeURIComponent(q)}">View all results <span aria-hidden="true">→</span></a>`
+          ? `${mediaHtml}${peopleHtml}<a class="view-search-results" href="/search.php?q=${encodeURIComponent(q)}">View all results ${App.icon('chevron-right')}</a>`
           : `<div class="search-hint"><strong>No matches for “${App.esc(q)}”</strong><span>Try another title, actor or episode.</span></div>`;
       } catch (err) {
         if (err?.name !== 'AbortError') results.innerHTML = `<div class="search-hint">${App.esc(err.message)}</div>`;

@@ -6,8 +6,8 @@
 
   let controller = null;
 
-  const empty = () => '<div class="empty-state empty-card"><strong>Your list is empty.</strong><span>Open any movie or series and choose “+ My List”.</span><a class="btn btn-secondary" href="/">Browse Schofestream</a></div>';
-  const renderItem = item => `<div class="my-list-item" data-id="${Schofestream.esc(item.id)}">${Schofestream.card(item)}<button class="my-list-remove" type="button" data-remove-id="${Schofestream.esc(item.id)}" aria-label="Remove ${Schofestream.esc(item.name)} from My List">×</button></div>`;
+  const empty = () => '<div class="empty-state empty-card"><strong>Your list is empty.</strong><span>Open any movie or series and choose “Add to My List”.</span><a class="btn btn-secondary" href="/">Browse Schofestream</a></div>';
+  const renderItem = item => `<div class="my-list-item" data-id="${Schofestream.esc(item.id)}">${Schofestream.card(item)}<button class="my-list-remove" type="button" data-remove-id="${Schofestream.esc(item.id)}" aria-label="Remove ${Schofestream.esc(item.name)} from My List">${Schofestream.icon('close')}</button></div>`;
 
   const updateCount = () => {
     const total = grid.querySelectorAll('.my-list-item').length;

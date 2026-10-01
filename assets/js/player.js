@@ -96,16 +96,16 @@
   const syncControls = () => {
     const paused = video.paused || video.ended;
     if (playPause) {
-      playPause.textContent = paused ? '▶' : '❚❚';
+      playPause.innerHTML = Schofestream.icon(paused ? 'play' : 'pause');
       playPause.setAttribute('aria-label', paused ? 'Play' : 'Pause');
     }
     if (centerToggle) {
-      centerToggle.textContent = paused ? '▶' : '❚❚';
+      centerToggle.innerHTML = Schofestream.icon(paused ? 'play' : 'pause');
       centerToggle.setAttribute('aria-label', paused ? 'Play' : 'Pause');
       centerToggle.classList.toggle('is-playing', !paused);
     }
     if (muteButton) {
-      muteButton.textContent = video.muted || video.volume === 0 ? '🔇' : '🔊';
+      muteButton.innerHTML = Schofestream.icon(video.muted || video.volume === 0 ? 'muted' : 'volume');
       muteButton.setAttribute('aria-label', video.muted ? 'Unmute' : 'Mute');
     }
     if (volumeBar) volumeBar.value = String(video.muted ? 0 : video.volume);
@@ -150,7 +150,7 @@
     }
   };
 
-  const optionButton = (label, value, selected) => `<button type="button" role="menuitemradio" aria-checked="${selected ? 'true' : 'false'}" data-value="${Schofestream.esc(String(value))}" class="player-menu-item${selected ? ' selected' : ''}"><span>${Schofestream.esc(label)}</span>${selected ? '<strong>✓</strong>' : ''}</button>`;
+  const optionButton = (label, value, selected) => `<button type="button" role="menuitemradio" aria-checked="${selected ? 'true' : 'false'}" data-value="${Schofestream.esc(String(value))}" class="player-menu-item${selected ? ' selected' : ''}"><span>${Schofestream.esc(label)}</span>${selected ? `<strong class="menu-check">${Schofestream.icon('check')}</strong>` : ''}</button>`;
 
   const renderMenus = () => {
     if (!info) return;
@@ -174,7 +174,7 @@
     }
     const selectedAudio = (info.audioTracks || []).find(track => Number(track.index) === Number(info.selectedAudio));
     if (audioButton) audioButton.textContent = selectedAudio?.language ? selectedAudio.language.toUpperCase() : 'Audio';
-    if (subtitleButton) subtitleButton.textContent = Number(info.selectedSubtitle) >= 0 ? 'CC ✓' : 'CC';
+    if (subtitleButton) subtitleButton.textContent = Number(info.selectedSubtitle) >= 0 ? 'CC On' : 'CC';
     if (qualityButton) {
       const best = Number(info.qualityOptions?.[0]?.bitrate || 0);
       qualityButton.textContent = Number(info.selectedBitrate) === best ? 'Auto' : `${(Number(info.selectedBitrate) / 1_000_000).toFixed(0)}M`;

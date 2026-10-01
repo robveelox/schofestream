@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 return [
     'app_name' => 'Schofestream',
-    'app_version' => '0.3.1',
+    'app_version' => '0.3.2',
     'jellyfin_url' => 'https://player.schofestream.co.uk',
     'client_name' => 'Schofestream Web',
     'client_version' => '0.3.1',
