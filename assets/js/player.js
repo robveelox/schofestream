@@ -51,8 +51,9 @@
   let switching = false;
   const ps4Attempted = new Set();
   let ps4StallTimer = 0;
+  let nativeStartupTimer = 0;
 
-  const preferences = { audio: null, subtitle: null, bitrate: 0, transport: isPS4 ? 'mp4' : 'hls' };
+  const preferences = { audio: null, subtitle: null, bitrate: 0, transport: 'hls' };
 
   const eventPayload = event => ({
     event,
@@ -186,6 +187,8 @@
   };
 
   const destroyStream = () => {
+    clearTimeout(nativeStartupTimer);
+    nativeStartupTimer = 0;
     try { hls?.destroy(); } catch (_) {}
     hls = null;
     video.pause();
@@ -221,17 +224,21 @@
     ps4StallTimer = 0;
   };
 
+  const clearNativeStartupTimer = () => {
+    clearTimeout(nativeStartupTimer);
+    nativeStartupTimer = 0;
+  };
+
   const nextPs4Fallback = async (start, autoplay, reason = '') => {
     clearPs4StallTimer();
     const steps = [
-      { transport: 'mp4', bitrate: 4_000_000, label: '720p MP4 compatibility stream' },
-      { transport: 'mp4', bitrate: 2_500_000, label: 'medium MP4 compatibility stream' },
-      { transport: 'mp4', bitrate: 1_200_000, label: 'data saver MP4 compatibility stream' },
-      { transport: 'hls', bitrate: 2_500_000, label: 'native HLS fallback' },
-      { transport: 'hls', bitrate: 1_200_000, label: 'low-bitrate HLS fallback' },
+      { transport: 'hls', bitrate: 2_500_000, label: 'PS4 native HLS' },
+      { transport: 'hls', bitrate: 1_800_000, label: 'PS4 medium HLS' },
+      { transport: 'hls', bitrate: 1_000_000, label: 'PS4 data saver HLS' },
+      { transport: 'mp4', bitrate: 1_000_000, label: 'PS4 MP4 last-resort stream' },
     ];
-    const currentTransport = info?.transport || preferences.transport || (isPS4 ? 'mp4' : 'hls');
-    const currentRate = Number(info?.selectedBitrate || preferences.bitrate || 4_000_000);
+    const currentTransport = info?.transport || preferences.transport || 'hls';
+    const currentRate = Number(info?.selectedBitrate || preferences.bitrate || 2_500_000);
     const next = steps.find(step => {
       const key = `${step.transport}:${step.bitrate}`;
       if (ps4Attempted.has(key)) return false;
@@ -252,19 +259,46 @@
   };
 
   const beginNativeMedia = (start, autoplay) => {
-    const onLoaded = () => streamReady(start, autoplay);
+    let settled = false;
+    const cleanup = () => {
+      clearNativeStartupTimer();
+      video.removeEventListener('loadedmetadata', onReady);
+      video.removeEventListener('canplay', onReady);
+      video.removeEventListener('error', onError);
+    };
+    const onReady = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      streamReady(start, autoplay);
+    };
     const onError = async () => {
-      video.removeEventListener('loadedmetadata', onLoaded);
+      if (settled) return;
+      settled = true;
+      cleanup();
       if (isPS4) {
+        switching = false;
         await nextPs4Fallback(video.currentTime || start || 0, autoplay, `Native ${info?.transport || info?.streamType || 'media'} playback error`);
         return;
       }
       fail('The browser could not load the stream from Jellyfin.', 'Check the Jellyfin transcoding log.');
     };
-    video.addEventListener('loadedmetadata', onLoaded, { once: true });
-    video.addEventListener('error', onError, { once: true });
+    video.addEventListener('loadedmetadata', onReady);
+    video.addEventListener('canplay', onReady);
+    video.addEventListener('error', onError);
     video.src = info.streamUrl;
     video.load();
+
+    if (isPS4) {
+      const timeoutMs = Number(info?.diagnostics?.startupTimeoutMs || 10000);
+      nativeStartupTimer = setTimeout(async () => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        switching = false;
+        await nextPs4Fallback(start || 0, autoplay, `PS4 stream did not become ready within ${Math.round(timeoutMs / 1000)} seconds.`);
+      }, Math.max(6000, timeoutMs));
+    }
   };
 
   const beginHlsJs = (start, autoplay) => {
@@ -331,7 +365,7 @@
     if (preferences.audio !== null && preferences.audio !== undefined) params.set('audio', String(preferences.audio));
     if (preferences.subtitle !== null && preferences.subtitle !== undefined) params.set('subtitle', String(preferences.subtitle));
     if (preferences.bitrate > 0) params.set('bitrate', String(preferences.bitrate));
-    if (isPS4) params.set('transport', preferences.transport || 'mp4');
+    if (isPS4) params.set('transport', preferences.transport || 'hls');
 
     try {
       info = await Schofestream.api(`/api/playback.php?${params.toString()}`, { signal: playbackController.signal });
@@ -339,7 +373,7 @@
       preferences.audio = info.selectedAudio;
       preferences.subtitle = info.selectedSubtitle;
       preferences.bitrate = info.selectedBitrate;
-      preferences.transport = info.transport || (isPS4 ? 'mp4' : 'hls');
+      preferences.transport = info.transport || 'hls';
       if (isPS4) ps4Attempted.add(`${preferences.transport}:${Number(info.selectedBitrate || 0)}`);
       title.textContent = info.item.seriesName ? `${info.item.seriesName} — ${info.item.name}` : info.item.name;
       document.title = `${info.item.name} · Schofestream`;
@@ -374,8 +408,8 @@
     if (kind === 'audio') await loadPlayback({ position, autoplay: wasPlaying, audio: Number(value) });
     if (kind === 'subtitle') await loadPlayback({ position, autoplay: wasPlaying, subtitle: Number(value) });
     if (kind === 'bitrate') {
-      if (isPS4) { ps4Attempted.clear(); preferences.transport = 'mp4'; }
-      await loadPlayback({ position, autoplay: wasPlaying, bitrate: Number(value), transport: isPS4 ? 'mp4' : undefined });
+      if (isPS4) { ps4Attempted.clear(); preferences.transport = 'hls'; }
+      await loadPlayback({ position, autoplay: wasPlaying, bitrate: Number(value), transport: isPS4 ? 'hls' : undefined });
     }
   };
 

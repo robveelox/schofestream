@@ -1,3 +1,12 @@
+# 0.3.7
+
+- PS4 native HLS is the primary playback path again.
+- Uses Jellyfin's negotiated TranscodingUrl when available.
+- Adds a 10-second PS4 startup watchdog so Preparing stream cannot hang forever.
+- Falls back through 2.5 Mbps, 1.8 Mbps and 1.0 Mbps HLS before one last MP4 attempt.
+- Passes resume position into Jellyfin PlaybackInfo negotiation.
+- Keeps forced H.264/AAC PS4-compatible transcoding.
+
 # 0.3.6
 
 - Fix PS4 playback when Jellyfin omits `TranscodingUrl` from `PlaybackInfo`.

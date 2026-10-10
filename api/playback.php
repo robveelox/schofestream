@@ -8,8 +8,8 @@ if ($id === '') json_response(['error' => 'Missing item id'], 422);
 
 $userId = jf_user_id();
 $isPs4 = sf_is_ps4_browser() || strtolower(trim((string)($_GET['platform'] ?? ''))) === 'ps4';
-$requestedTransport = strtolower(trim((string)($_GET['transport'] ?? ($isPs4 ? 'mp4' : 'hls'))));
-$ps4Transport = $isPs4 && $requestedTransport === 'hls' ? 'hls' : ($isPs4 ? 'mp4' : 'hls');
+$requestedTransport = strtolower(trim((string)($_GET['transport'] ?? 'hls')));
+$ps4Transport = $isPs4 && $requestedTransport === 'mp4' ? 'mp4' : 'hls';
 $configuredMax = (int)$config['max_streaming_bitrate'];
 $ps4Max = (int)($config['ps4_max_streaming_bitrate'] ?? 4_000_000);
 $ps4Medium = (int)($config['ps4_medium_streaming_bitrate'] ?? 2_500_000);
@@ -122,7 +122,9 @@ try {
         return is_array($sources[0] ?? null) ? $sources[0] : [];
     };
 
-    $info = jf_request('POST', "/Items/{$id}/PlaybackInfo", ['UserId' => $userId], $playbackRequest);
+    $playbackQuery = ['UserId' => $userId];
+    if ($positionOverride > 0) $playbackQuery['StartTimeTicks'] = (int)round($positionOverride * 10000000);
+    $info = jf_request('POST', "/Items/{$id}/PlaybackInfo", $playbackQuery, $playbackRequest);
     $source = $selectSource($info);
 
     // If the profile preference is "Jellyfin default", discover the server-selected subtitle
@@ -133,7 +135,7 @@ try {
             $subtitleIndex = (int)$defaultSubtitle;
             $playbackRequest['SubtitleStreamIndex'] = $subtitleIndex;
             $playbackRequest['AlwaysBurnInSubtitleWhenTranscoding'] = true;
-            $info = jf_request('POST', "/Items/{$id}/PlaybackInfo", ['UserId' => $userId], $playbackRequest);
+            $info = jf_request('POST', "/Items/{$id}/PlaybackInfo", $playbackQuery, $playbackRequest);
             $source = $selectSource($info);
         }
     }
@@ -146,10 +148,9 @@ try {
     $base = rtrim((string)$config['jellyfin_url'], '/');
 
     if ($isPs4) {
-        // PS4 compatibility must not depend on MediaSourceInfo.TranscodingUrl. Jellyfin's
-        // Video API accepts an explicit dynamic-transcode request using the media source id.
-        // Progressive MP4 is preferred because the PS4 browser is more reliable with it;
-        // native HLS remains available as an automatic fallback.
+        // PS4 compatibility prefers Jellyfin's negotiated native-HLS URL. When Jellyfin
+        // omits it, the documented dynamic video endpoint is constructed from the media
+        // source id. Progressive MP4 remains a final fallback only.
         $selectedAudioForUrl = $audioIndex ?? ($source['DefaultAudioStreamIndex'] ?? null);
         $query = [
             'static' => 'false',
@@ -187,15 +188,27 @@ try {
         if ($positionOverride > 0) $query['StartTimeTicks'] = (int)round($positionOverride * 10000000);
 
         if ($ps4Transport === 'hls') {
-            $query['SegmentContainer'] = 'ts';
-            $query['MinSegments'] = 1;
-            $query['SegmentLength'] = 3;
-            $query['BreakOnNonKeyFrames'] = 'false';
-            $streamPath = '/Videos/' . rawurlencode($id) . '/master.m3u8';
+            // Prefer Jellyfin's negotiated HLS URL because it contains the server's exact
+            // transcoding parameters. If Jellyfin omits it, fall back to the documented
+            // dynamic video endpoint instead of failing the request.
+            $negotiatedUrl = trim((string)($source['TranscodingUrl'] ?? ''));
+            if ($negotiatedUrl !== '') {
+                $streamUrl = $base . '/' . ltrim($negotiatedUrl, '/');
+                if (!preg_match('/(?:^|[?&])(?:api_key|ApiKey|X-Emby-Token)=/i', $streamUrl)) {
+                    $streamUrl .= (str_contains($streamUrl, '?') ? '&' : '?') . 'api_key=' . rawurlencode((string)$_SESSION['jf_token']);
+                }
+            } else {
+                $query['SegmentContainer'] = 'ts';
+                $query['MinSegments'] = 3;
+                $query['SegmentLength'] = 6;
+                $query['BreakOnNonKeyFrames'] = 'false';
+                $streamPath = '/Videos/' . rawurlencode($id) . '/master.m3u8';
+                $streamUrl = $base . $streamPath . '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
+            }
         } else {
             $streamPath = '/Videos/' . rawurlencode($id) . '/stream.mp4';
+            $streamUrl = $base . $streamPath . '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
         }
-        $streamUrl = $base . $streamPath . '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
     } else {
         $transcodingUrl = trim((string)($source['TranscodingUrl'] ?? ''));
         if ($transcodingUrl === '') throw new RuntimeException('Jellyfin did not provide a transcoding URL for this item.');
@@ -269,6 +282,7 @@ try {
             'maxFramerate' => $isPs4 ? $ps4MaxFramerate : null,
             'forcedTranscode' => $isPs4,
             'transport' => $isPs4 ? $ps4Transport : 'hls',
+            'startupTimeoutMs' => $isPs4 ? (int)($config['ps4_startup_timeout_ms'] ?? 10000) : null,
         ],
     ]);
 } catch (Throwable $e) {

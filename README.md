@@ -1,10 +1,10 @@
-# Schofestream 0.3.6
+# Schofestream 0.3.7
 
 Schofestream is a lightweight PHP/JavaScript streaming frontend backed by Jellyfin. Jellyfin remains responsible for media libraries, metadata, playback/transcoding, per-user watch state and favourites; Schofestream provides the branded web interface, household profiles, personalisation and browser-specific playback handling.
 
 ## Current release
 
-**Version 0.3.6** includes:
+**Version 0.3.7** includes:
 
 - Jellyfin username/password authentication with server-side PHP sessions
 - Movies, TV shows, seasons and episodes
@@ -144,3 +144,8 @@ diagnostics.php      Deployment/runtime checks
 ## Release history
 
 See `CHANGELOG.md` for version-by-version changes.
+
+
+## 0.3.7 PS4 startup reliability
+
+PS4 playback now starts with native HLS rather than dynamic MP4. Schofestream prefers Jellyfin's negotiated HLS URL, falls back to a documented dynamic HLS URL when necessary, and automatically changes compatibility mode if the PS4 video element does not become ready within 10 seconds.
