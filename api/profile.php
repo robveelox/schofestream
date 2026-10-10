@@ -22,12 +22,18 @@ try {
     $moviePlays = count(array_filter($recent, static fn(array $i): bool => $i['type'] === 'Movie'));
     $episodePlays = count(array_filter($recent, static fn(array $i): bool => $i['type'] === 'Episode'));
     $configData = is_array($user['Configuration'] ?? null) ? $user['Configuration'] : [];
+    $profile = sf_profile_current();
 
     json_response([
+        'profile' => [
+            'id' => (string)($profile['id'] ?? ''),
+            'name' => sf_profile_name(),
+            'avatar' => sf_profile_avatar_key(),
+            'isOwner' => (bool)($profile['is_owner'] ?? false),
+        ],
         'user' => [
             'id' => $userId,
             'name' => (string)($user['Name'] ?? ($_SESSION['jf_username'] ?? 'User')),
-            'avatar' => '/api/avatar.php',
             'hasPassword' => (bool)($user['HasPassword'] ?? false),
             'lastLoginDate' => $user['LastLoginDate'] ?? null,
             'lastActivityDate' => $user['LastActivityDate'] ?? null,
@@ -45,6 +51,7 @@ try {
         'session' => [
             'deviceId' => substr((string)($_SESSION['device_id'] ?? ''), 0, 8) . '…',
             'signedInAt' => $_SESSION['login_at'] ?? null,
+            'householdOwner' => sf_household_owner_name(),
         ],
     ]);
 } catch (Throwable $e) {

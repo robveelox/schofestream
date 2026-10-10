@@ -96,6 +96,35 @@ function jf_request(
     return $decoded;
 }
 
+
+function jf_request_with_token(
+    string $token,
+    string $method,
+    string $path,
+    array $query = [],
+    ?array $body = null,
+    bool $raw = false,
+    ?string $deviceId = null
+): array {
+    if ($token === '') {
+        throw new RuntimeException('A Jellyfin access token is required.');
+    }
+    $hadToken = array_key_exists('jf_token', $_SESSION);
+    $hadDevice = array_key_exists('device_id', $_SESSION);
+    $previousToken = $_SESSION['jf_token'] ?? null;
+    $previousDevice = $_SESSION['device_id'] ?? null;
+    $_SESSION['jf_token'] = $token;
+    if ($deviceId !== null && $deviceId !== '') {
+        $_SESSION['device_id'] = $deviceId;
+    }
+    try {
+        return jf_request($method, $path, $query, $body, true, $raw);
+    } finally {
+        if ($hadToken) $_SESSION['jf_token'] = $previousToken; else unset($_SESSION['jf_token']);
+        if ($hadDevice) $_SESSION['device_id'] = $previousDevice; else unset($_SESSION['device_id']);
+    }
+}
+
 /**
  * Small per-session metadata cache. It never caches streams, credentials or mutations.
  * Keeping this in the PHP session makes it safe for shared hosting and user-specific.

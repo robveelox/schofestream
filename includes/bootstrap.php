@@ -32,6 +32,7 @@ header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
 header("Content-Security-Policy: default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; img-src 'self' data: blob:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' https://cdn.jsdelivr.net; worker-src 'self' blob:; connect-src 'self' {$jfOrigin}; media-src 'self' {$jfOrigin} blob: data:");
 
 require_once __DIR__ . '/jellyfin.php';
+require_once __DIR__ . '/households.php';
 require_once __DIR__ . '/preferences.php';
 
 function e(?string $value): string
@@ -39,23 +40,51 @@ function e(?string $value): string
     return htmlspecialchars($value ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
+function sf_is_ps4_browser(): bool
+{
+    $ua = (string)($_SERVER['HTTP_USER_AGENT'] ?? '');
+    return stripos($ua, 'PlayStation 4') !== false;
+}
+
 function is_logged_in(): bool
 {
     return !empty($_SESSION['jf_token']) && !empty($_SESSION['jf_user_id']);
 }
 
+function require_household_page(): void
+{
+    if (!sf_household_authenticated()) {
+        header('Location: /login.php');
+        exit;
+    }
+}
+
+function require_household_api(): void
+{
+    if (!sf_household_authenticated()) {
+        json_response(['error' => 'Household authentication required'], 401);
+    }
+}
+
 function require_auth_page(): void
 {
-    if (!is_logged_in()) {
+    if (!sf_household_authenticated() || !is_logged_in()) {
         header('Location: /login.php');
+        exit;
+    }
+    if (!sf_profile_selected()) {
+        header('Location: /profiles.php');
         exit;
     }
 }
 
 function require_auth_api(): void
 {
-    if (!is_logged_in()) {
+    if (!sf_household_authenticated() || !is_logged_in()) {
         json_response(['error' => 'Authentication required'], 401);
+    }
+    if (!sf_profile_selected()) {
+        json_response(['error' => 'Choose a profile first.', 'profileSelectionRequired' => true], 409);
     }
 }
 

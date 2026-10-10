@@ -2,12 +2,12 @@
 declare(strict_types=1);
 require __DIR__ . '/includes/bootstrap.php';
 
-if (is_logged_in()) {
-    try {
-        jf_request('POST', '/Sessions/Logout');
-    } catch (Throwable) {
-        // Local sign-out must still complete if Jellyfin is temporarily unavailable.
-    }
+// Only end the household owner's login session. Linked profile tokens are deliberately
+// retained (encrypted outside the web root) so they can be selected again after the next
+// household sign-in. Removing/relinking a profile revokes its stored token separately.
+$ownerToken = (string)($_SESSION['household_owner_token'] ?? '');
+if ($ownerToken !== '') {
+    try { jf_request_with_token($ownerToken, 'POST', '/Sessions/Logout', [], null, false, (string)($_SESSION['household_owner_device_id'] ?? '')); } catch (Throwable) {}
 }
 
 $_SESSION = [];

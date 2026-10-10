@@ -17,7 +17,7 @@ render_header('Now Playing', false, 'watch-page');
     </div>
 
     <div class="video-wrap" id="videoWrap">
-        <video id="video" playsinline preload="metadata" aria-label="Schofestream video player"></video>
+        <video id="video" playsinline webkit-playsinline preload="<?= sf_is_ps4_browser() ? 'auto' : 'metadata' ?>" aria-label="Schofestream video player"></video>
         <button class="player-center-toggle player-chrome" id="centerToggle" type="button" aria-label="Play or pause"><?= ui_icon('play') ?></button>
 
         <div class="player-controls player-chrome" id="playerControls">
@@ -57,5 +57,7 @@ render_header('Now Playing', false, 'watch-page');
         </div>
     </div>
 </section>
+<?php if (!sf_is_ps4_browser()): ?>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.7.3/dist/hls.min.js"></script>
+<?php endif; ?>
 <?php render_footer(['/assets/js/player.js']); ?>

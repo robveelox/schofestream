@@ -3,6 +3,8 @@
   const video = document.getElementById('video');
   if (!root || !video) return;
 
+  const isPS4 = document.body?.dataset?.platform === 'ps4' || /PlayStation 4/i.test(navigator.userAgent || '');
+
   const $ = id => document.getElementById(id);
   const loading = $('playerLoading');
   const buffering = $('playerBuffering');
@@ -47,8 +49,10 @@
   let mediaRetries = 0;
   let playbackController = null;
   let switching = false;
+  const ps4Attempted = new Set();
+  let ps4StallTimer = 0;
 
-  const preferences = { audio: null, subtitle: null, bitrate: 0 };
+  const preferences = { audio: null, subtitle: null, bitrate: 0, transport: isPS4 ? 'mp4' : 'hls' };
 
   const eventPayload = event => ({
     event,
@@ -212,10 +216,55 @@
     }
   };
 
-  const beginNativeHls = (start, autoplay) => {
+  const clearPs4StallTimer = () => {
+    clearTimeout(ps4StallTimer);
+    ps4StallTimer = 0;
+  };
+
+  const nextPs4Fallback = async (start, autoplay, reason = '') => {
+    clearPs4StallTimer();
+    const steps = [
+      { transport: 'mp4', bitrate: 4_000_000, label: '720p MP4 compatibility stream' },
+      { transport: 'mp4', bitrate: 2_500_000, label: 'medium MP4 compatibility stream' },
+      { transport: 'mp4', bitrate: 1_200_000, label: 'data saver MP4 compatibility stream' },
+      { transport: 'hls', bitrate: 2_500_000, label: 'native HLS fallback' },
+      { transport: 'hls', bitrate: 1_200_000, label: 'low-bitrate HLS fallback' },
+    ];
+    const currentTransport = info?.transport || preferences.transport || (isPS4 ? 'mp4' : 'hls');
+    const currentRate = Number(info?.selectedBitrate || preferences.bitrate || 4_000_000);
+    const next = steps.find(step => {
+      const key = `${step.transport}:${step.bitrate}`;
+      if (ps4Attempted.has(key)) return false;
+            if (step.bitrate > currentRate) return false;
+      return true;
+    });
+    if (!next) {
+      fail('The PS4 browser could not keep a compatible video stream open.', reason || 'All PS4 compatibility modes were tried.');
+      return;
+    }
+    ps4Attempted.add(`${next.transport}:${next.bitrate}`);
+    switching = false;
+    loading.hidden = false;
+    buffering.hidden = true;
+    const loadingText = loading.querySelector('span:last-child');
+    if (loadingText) loadingText.textContent = `Trying ${next.label}…`;
+    await loadPlayback({ position: Number(start) || 0, autoplay, bitrate: next.bitrate, transport: next.transport });
+  };
+
+  const beginNativeMedia = (start, autoplay) => {
+    const onLoaded = () => streamReady(start, autoplay);
+    const onError = async () => {
+      video.removeEventListener('loadedmetadata', onLoaded);
+      if (isPS4) {
+        await nextPs4Fallback(video.currentTime || start || 0, autoplay, `Native ${info?.transport || info?.streamType || 'media'} playback error`);
+        return;
+      }
+      fail('The browser could not load the stream from Jellyfin.', 'Check the Jellyfin transcoding log.');
+    };
+    video.addEventListener('loadedmetadata', onLoaded, { once: true });
+    video.addEventListener('error', onError, { once: true });
     video.src = info.streamUrl;
-    video.addEventListener('loadedmetadata', () => streamReady(start, autoplay), { once: true });
-    video.addEventListener('error', () => fail('The browser could not load the stream from Jellyfin.', 'Check the Jellyfin transcoding log.'), { once: true });
+    video.load();
   };
 
   const beginHlsJs = (start, autoplay) => {
@@ -252,7 +301,7 @@
     });
   };
 
-  const loadPlayback = async ({ position = null, autoplay = true, audio = undefined, subtitle = undefined, bitrate = undefined } = {}) => {
+  const loadPlayback = async ({ position = null, autoplay = true, audio = undefined, subtitle = undefined, bitrate = undefined, transport = undefined } = {}) => {
     if (switching) return;
     switching = true;
     closeMenus();
@@ -265,6 +314,8 @@
 
     destroyStream();
     loading.hidden = false;
+    const loadingText = loading.querySelector('span:last-child');
+    if (loadingText) loadingText.textContent = isPS4 ? 'Preparing PS4 compatible stream…' : 'Preparing stream…';
     buffering.hidden = true;
     errorBox.hidden = true;
     failed = false;
@@ -272,12 +323,15 @@
     if (audio !== undefined) preferences.audio = audio;
     if (subtitle !== undefined) preferences.subtitle = subtitle;
     if (bitrate !== undefined) preferences.bitrate = bitrate;
+    if (transport !== undefined) preferences.transport = transport;
 
     const params = new URLSearchParams({ id: root.dataset.id });
+    if (isPS4) params.set('platform', 'ps4');
     if (oldPosition > 0) params.set('position', String(oldPosition));
     if (preferences.audio !== null && preferences.audio !== undefined) params.set('audio', String(preferences.audio));
     if (preferences.subtitle !== null && preferences.subtitle !== undefined) params.set('subtitle', String(preferences.subtitle));
     if (preferences.bitrate > 0) params.set('bitrate', String(preferences.bitrate));
+    if (isPS4) params.set('transport', preferences.transport || 'mp4');
 
     try {
       info = await Schofestream.api(`/api/playback.php?${params.toString()}`, { signal: playbackController.signal });
@@ -285,6 +339,8 @@
       preferences.audio = info.selectedAudio;
       preferences.subtitle = info.selectedSubtitle;
       preferences.bitrate = info.selectedBitrate;
+      preferences.transport = info.transport || (isPS4 ? 'mp4' : 'hls');
+      if (isPS4) ps4Attempted.add(`${preferences.transport}:${Number(info.selectedBitrate || 0)}`);
       title.textContent = info.item.seriesName ? `${info.item.seriesName} — ${info.item.name}` : info.item.name;
       document.title = `${info.item.name} · Schofestream`;
       renderMenus();
@@ -298,12 +354,16 @@
       }
 
       const start = oldPosition > 0 ? oldPosition : Number(info.startSeconds || 0);
-      if (video.canPlayType('application/vnd.apple.mpegurl')) beginNativeHls(start, autoplay);
+      if (isPS4 || info.nativeHls === true || info.streamType === 'mp4' || video.canPlayType('application/vnd.apple.mpegurl')) beginNativeMedia(start, autoplay);
       else if (window.Hls && Hls.isSupported()) beginHlsJs(start, autoplay);
       else fail('This browser does not support HLS playback.');
     } catch (err) {
       if (err?.name === 'AbortError') return;
       switching = false;
+      if (isPS4) {
+        await nextPs4Fallback(oldPosition, autoplay, err?.message || 'The PS4 compatibility stream could not be prepared.');
+        return;
+      }
       fail(err?.message || 'The playback request failed.');
     }
   };
@@ -313,7 +373,10 @@
     const position = Number.isFinite(video.currentTime) ? video.currentTime : 0;
     if (kind === 'audio') await loadPlayback({ position, autoplay: wasPlaying, audio: Number(value) });
     if (kind === 'subtitle') await loadPlayback({ position, autoplay: wasPlaying, subtitle: Number(value) });
-    if (kind === 'bitrate') await loadPlayback({ position, autoplay: wasPlaying, bitrate: Number(value) });
+    if (kind === 'bitrate') {
+      if (isPS4) { ps4Attempted.clear(); preferences.transport = 'mp4'; }
+      await loadPlayback({ position, autoplay: wasPlaying, bitrate: Number(value), transport: isPS4 ? 'mp4' : undefined });
+    }
   };
 
   audioButton?.addEventListener('click', event => { event.stopPropagation(); toggleMenu(audioMenu, audioButton); });
@@ -400,16 +463,33 @@
     if (!started) { started = true; report('start'); }
     else report('progress');
   });
-  video.addEventListener('playing', () => { buffering.hidden = true; loading.hidden = true; });
-  video.addEventListener('waiting', () => { if (!failed && !switching) buffering.hidden = false; });
-  video.addEventListener('stalled', () => { if (!failed && !switching) buffering.hidden = false; });
-  video.addEventListener('canplay', () => { buffering.hidden = true; });
+  video.addEventListener('playing', () => { clearPs4StallTimer(); buffering.hidden = true; loading.hidden = true; });
+  video.addEventListener('waiting', () => {
+    if (!failed && !switching) buffering.hidden = false;
+    if (isPS4 && !switching) {
+      clearPs4StallTimer();
+      ps4StallTimer = setTimeout(() => {
+        if (!video.paused && !video.ended && video.readyState < 3) nextPs4Fallback(video.currentTime || info?.startSeconds || 0, true, 'PS4 playback stalled while buffering.');
+      }, 10000);
+    }
+  });
+  video.addEventListener('stalled', () => {
+    if (!failed && !switching) buffering.hidden = false;
+    if (isPS4 && !switching) {
+      clearPs4StallTimer();
+      ps4StallTimer = setTimeout(() => {
+        if (!video.paused && !video.ended && video.readyState < 3) nextPs4Fallback(video.currentTime || info?.startSeconds || 0, true, 'PS4 stream stalled.');
+      }, 10000);
+    }
+  });
+  video.addEventListener('canplay', () => { clearPs4StallTimer(); buffering.hidden = true; });
   video.addEventListener('pause', () => { syncControls(); showChrome(true); if (!switching) report('progress'); });
   video.addEventListener('volumechange', syncControls);
   video.addEventListener('loadedmetadata', syncTimeline);
   video.addEventListener('durationchange', syncTimeline);
   video.addEventListener('seeked', () => { if (!switching) report('progress'); });
   video.addEventListener('timeupdate', () => {
+    clearPs4StallTimer();
     syncTimeline();
     const now = Date.now();
     if (!video.paused && now - lastReport > 10000) {

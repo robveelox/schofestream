@@ -11,12 +11,12 @@
     button.querySelector('span').textContent = 'Signing in…';
     try {
       const fields = new FormData(form);
-      await Schofestream.api('/api/login.php', {
+      const data = await Schofestream.api('/api/login.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: fields.get('username'), password: fields.get('password'), csrf: Schofestream.csrf })
       });
-      window.location.href = '/';
+      window.location.href = data.redirect || '/profiles.php';
     } catch (err) {
       error.textContent = err.message;
       error.hidden = false;

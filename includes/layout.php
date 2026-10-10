@@ -29,8 +29,11 @@ function render_header(string $title = 'Schofestream', bool $showNav = true, str
 {
     global $config;
     $appName = (string)$config['app_name'];
-    $username = (string)($_SESSION['jf_username'] ?? '');
+    $username = sf_profile_selected() ? sf_profile_name() : sf_household_owner_name();
+    $avatarKey = sf_profile_selected() ? sf_profile_avatar_key() : 'ocean';
     $fullTitle = $title === $appName ? $appName : $title . ' · ' . $appName;
+    $platformClass = sf_is_ps4_browser() ? ' platform-ps4' : '';
+    $bodyClasses = trim($bodyClass . $platformClass);
     ?>
 <!doctype html>
 <html lang="en">
@@ -43,7 +46,7 @@ function render_header(string $title = 'Schofestream', bool $showNav = true, str
     <title><?= e($fullTitle) ?></title>
     <link rel="stylesheet" href="/assets/css/app.css?v=<?= e((string)$config['app_version']) ?>">
 </head>
-<body class="<?= e($bodyClass) ?>">
+<body class="<?= e($bodyClasses) ?>" data-platform="<?= sf_is_ps4_browser() ? 'ps4' : 'web' ?>">
 <a class="skip-link" href="#mainContent">Skip to content</a>
 <?php if ($showNav): ?>
 <header class="topbar" id="topbar">
@@ -57,7 +60,8 @@ function render_header(string $title = 'Schofestream', bool $showNav = true, str
     </nav>
     <button class="nav-search-button" id="openSearch" type="button" aria-label="Search Schofestream"><?= ui_icon('search') ?> <span>Search</span></button>
     <div class="account-menu">
-        <a class="account-profile-link" href="/account.php" aria-label="Open profile"><span class="avatar-dot"><?= e(strtoupper(substr($username ?: 'S', 0, 1))) ?></span><span class="account-name"><?= e($username) ?></span></a>
+        <a class="account-profile-link" href="/account.php" aria-label="Open profile"><span class="avatar-dot profile-avatar-tone avatar-<?= e($avatarKey) ?>"><?= e(strtoupper(substr($username ?: 'S', 0, 1))) ?></span><span class="account-name"><?= e($username) ?></span></a>
+        <a class="switch-profile-link" href="/profiles.php">Switch profile</a>
         <a class="settings-link" href="/settings.php" aria-label="Settings"><?= ui_icon('settings') ?></a>
         <a class="logout-link" href="/logout.php">Sign out</a>
         <a class="mobile-logout-link" href="/logout.php" aria-label="Sign out" title="Sign out"><?= ui_icon('logout') ?></a>
@@ -91,15 +95,17 @@ function render_header(string $title = 'Schofestream', bool $showNav = true, str
     <?php
 }
 
-function render_footer(array $scripts = []): void
+function render_footer(array $scripts = [], bool $showFooter = true): void
 {
     global $config;
     ?>
 </main>
+<?php if ($showFooter): ?>
 <footer class="site-footer">
     <div><span class="brand-small">Schofestream</span> <span class="muted">v<?= e((string)$config['app_version']) ?></span></div>
     <div class="muted">Powered by your Jellyfin library</div>
 </footer>
+<?php endif; ?>
 <script src="/assets/js/app.js?v=<?= e((string)$config['app_version']) ?>"></script>
 <script src="/assets/js/global-search.js?v=<?= e((string)$config['app_version']) ?>"></script>
 <?php foreach ($scripts as $script): ?>

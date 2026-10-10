@@ -46,6 +46,13 @@
       return String(value ?? '').replace(/[&<>'"]/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[ch]));
     },
 
+    profileAvatar(name, key = 'ocean', extraClass = '') {
+      const allowed = ['ocean','violet','mint','amber','rose','slate','sky','coral'];
+      const tone = allowed.includes(String(key)) ? String(key) : 'ocean';
+      const initial = String(name || 'S').trim().slice(0, 1).toUpperCase() || 'S';
+      return `<span class="profile-avatar-tone avatar-${tone} ${App.esc(extraClass)}" aria-hidden="true"><span>${App.esc(initial)}</span></span>`;
+    },
+
     duration(seconds) {
       const s = Math.max(0, Math.round(Number(seconds) || 0));
       const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
@@ -196,5 +203,60 @@
     const update = () => topbar.classList.toggle('scrolled', window.scrollY > 20);
     update();
     window.addEventListener('scroll', update, { passive: true });
+  }
+
+  const isPS4 = document.body?.dataset?.platform === 'ps4' || /PlayStation 4/i.test(navigator.userAgent || '');
+  if (isPS4 && !document.body.classList.contains('watch-page')) {
+    const focusable = () => Array.from(document.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'))
+      .filter(el => {
+        const rect = el.getBoundingClientRect();
+        const style = window.getComputedStyle(el);
+        return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none';
+      });
+
+    const moveFocus = direction => {
+      const items = focusable();
+      if (!items.length) return;
+      const current = document.activeElement && items.includes(document.activeElement) ? document.activeElement : null;
+      if (!current) {
+        (document.querySelector('.hero .btn, .media-card, .main-nav a, .nav-search-button') || items[0]).focus();
+        return;
+      }
+      const from = current.getBoundingClientRect();
+      const fx = from.left + from.width / 2;
+      const fy = from.top + from.height / 2;
+      let best = null;
+      let bestScore = Infinity;
+      for (const candidate of items) {
+        if (candidate === current) continue;
+        const rect = candidate.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        const dx = cx - fx;
+        const dy = cy - fy;
+        if (direction === 'left' && dx >= -4) continue;
+        if (direction === 'right' && dx <= 4) continue;
+        if (direction === 'up' && dy >= -4) continue;
+        if (direction === 'down' && dy <= 4) continue;
+        const primary = direction === 'left' || direction === 'right' ? Math.abs(dx) : Math.abs(dy);
+        const cross = direction === 'left' || direction === 'right' ? Math.abs(dy) : Math.abs(dx);
+        const score = primary + (cross * 2.4);
+        if (score < bestScore) { bestScore = score; best = candidate; }
+      }
+      if (best) {
+        best.focus();
+        try { best.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (_) { best.scrollIntoView(false); }
+      }
+    };
+
+    document.addEventListener('keydown', event => {
+      const map = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' };
+      const direction = map[event.key] || ({37:'left',38:'up',39:'right',40:'down'})[event.keyCode];
+      if (!direction) return;
+      const editing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName || '');
+      if (editing && (direction === 'left' || direction === 'right')) return;
+      event.preventDefault();
+      moveFocus(direction);
+    });
   }
 })();
